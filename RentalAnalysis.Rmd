@@ -1,0 +1,229 @@
+---
+title: "Bike Rental Analysis"
+author: "Sam Skinner"
+date: "12/3/2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE}
+library(ggplot2) 
+library(stats)
+library(corrplot)
+library(reshape2)
+```
+
+
+### Executive Summary
+
+Bike Rentals are a growing industry but one that faces both weather-based and seasonal variations in demand.  It is important to quantify how those those variations affect demand as demand, in turn, affects the number of employees needed as well as the number of bikes that need to be available.  Significant mis-matches in bike availability or numbers of workers can result in missing rental opportunities (no bike available or insufficient employees for timely rental) or conversely, extra expenses to the rental company in terms of wages or bike purchases.
+
+Using a publicly available dataset (described below), I attempt to answer two basic questions:
+
+  Q1: What are the factors that determine demand?
+  
+  Q2: Do these factors vary by season?
+  
+The dataset consists of 17379 rental records collected over a two year period (2011, 2012) in Washington, D.C..  The records have been aggregated into 731 days for this analysis because each day is the determinant of the number bikes and employees needed.
+
+Data attributes are both categorical and numerical and the statistical analyses vary accordingly.
+
+  
+##### The Data Source
+The data are taken from the [UCI Machine Learning Repository](url: http://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset).  The original data are reported and analyized in a paper by [Fanaee, T and Gama, J.](url: http://link.springer.com/article/10.1007%2Fs13748-013-0040-3)
+
+<br>
+
+### Viewing the Data
+
+As noted previously, the data consist of 731 day records with 15 variables per record plus a record number. Below is a list of the data attributes, including the variable name the type of data and a sample of the first 10 records for that attribute:
+
+```{r }
+day <- read.csv('day.csv')
+str(day)
+```
+
+
+##### Description of Attributes
+
+1. Instances:    Record id number
+2.  date:       Date (Factor w/ 731 levels "1/1/11","1/1/12",...)
+3.  season:      Season (1:spring, 2:summer, 3:fall, 4:winter)
+4.  yr:          Year (0:2011, 1:2012)
+5.  month:       Month (1 to 12)
+6.  holiday:     Holiday? (0:no, 1:yes)
+7.  weekday:     Day of Week.  Numbered 1-7, beginning with Sunday.
+8.  workingday:  WorkingDay? (0:no, 1:yes)
+9.  conditions:  Weather Conditions: (1: Clear or Partly cloudy,
+                                      2: Mist with Few Clouds up to Cloudy,
+                                      3: Light Snow or Light Rain with Scattered Clouds/Cloudy/Thunderstorm,
+                                      4: Heavy Rain, Hail or Thunderstorm or Mist or Snow + Fog)
+10. temp:       Normalized temperature in Celsius. The values are divided to 41 (max)
+11. felt_temp:  Normalized feeling temperature in Celsius. The values are divided to 50 (max)
+12. hum:        Normalized humidity.  The values are divided to 100 (max)
+13. windspeed:  Normalized wind speed. The values are divided to 67 (max)
+14. casual:     Count of casual users
+15. registered: Count of registered users
+16. count:      Count of total bike rentals including both casual and registered
+
+<br>
+
+####Visuals
+
+```{r, echo=FALSE }
+ggplot(data=day, aes(day$conditions)) + geom_histogram(binwidth = 1,
+                                                       col = 'black',
+                                                       fill='dark green',
+                                                       alpha = 0.75) +
+                                              labs(title="Frequency of Each Weather Condition") +
+                                              labs(x="Weather Condition", y="Frequency") +
+                                              xlim(c(0, 4))
+```
+
+
+####Notice that there are no "4" values and very few "3" values (n= 21).  In other words, we generally have sunny or partially cloudy days.   
+
+
+```{r echo=FALSE}
+ggplot(data=day, aes(day$temp)) + geom_histogram(binwidth = 0.05,
+                                                 col = 'black',
+                                                 fill='dark green',
+                                                 alpha = 0.75) +
+                                              labs(title="Temperature Frequencies") +
+                                              labs(x="Normalized Temperature", y="Frequency")
+
+ggplot(data=day, aes(day$felt_temp)) + geom_histogram(binwidth = 0.05,
+                                                      col = 'black',
+                                                      fill='dark green',
+                                                      alpha = 0.75) +
+                                              labs(title="Frequency of Apparent Temperatures") +
+                                              labs(x="Normalized Apparent Temperature", y="Frequency")
+```
+
+####Both distributions are platykurtic.
+
+```{r bunch_o_figs, fig.height=4, fig.width=8}
+par(mfrow=c(1,2), las=1)
+for(i in 1:2) {
+hist(day$hum)
+hist(day$windspeed)
+}
+```
+
+
+```{r echo=FALSE}
+ggplot(data=day, aes(day$hum)) + geom_histogram(binwidth = 0.05,
+                                                col = 'black',
+                                                fill='dark green',
+                                                alpha = 0.75) +
+                                                labs(title="Frequency of Humidity Level") +
+                                                labs(x="Normalized Humidity", y="Frequency")
+
+ggplot(data=day, aes(day$windspeed)) + geom_histogram(binwidth = 0.05,
+                                                      col = 'black',
+                                                      fill='dark green',
+                                                      alpha = 0.75) +
+                                                      labs(title="Windspeed Frequencies") +
+                                                      labs(x="Normalized Windspeed", y="Frequency") +
+                                                      xlim(c(0, 1))
+```
+
+####The "zero" humidity day appears to be an error, perhaps a day of no data.  Notice that the two distributions are slightly skewed, humidity to the right, windspeed to the left.
+
+```{r echo=FALSE}
+ggplot(data=day, aes(day$casual)) + geom_histogram(binwidth = 500,
+                                                col = 'black',
+                                                fill='dark green',
+                                                alpha = 0.75) +
+                                                labs(title="Number of Casual Bikers") +
+                                                labs(x="Number of Bikers", y="Frequency")
+
+ggplot(data=day, aes(day$registered)) + geom_histogram(binwidth = 500,
+                                                col = 'black',
+                                                fill='dark green',
+                                                alpha = 0.75) +
+                                                labs(title="Number of Registered Bikers") +
+                                                labs(x="Registered", y="Frequency")
+
+ggplot(data=day, aes(day$count)) + geom_histogram(binwidth = 500,
+                                                col = 'black',
+                                                fill='dark green',
+                                                alpha = 0.75) +
+                                                labs(title="Total Number of Bikers") +
+                                                labs(x="Total", y="Frequency")
+
+qplot(day$casual, data=day, geom='histogram', fill=I('dark green'), alpha=0.2, ylab='Frequency of Count', xlab='casual(gr), registered (red) & total (yellow) riders') + geom_histogram(aes(day$registered), data=day, fill='red', alpha=0.2) + geom_histogram(aes(day$count), data=day, fill='yellow', alpha=0.4)
+```
+
+
+###Reducing the Dataset
+
+The current dataset contains variables that are irrelevant to our purposes.  We don't need the record numbers (though they were useful above in identifying and evaluating possible outliers); nor do we need the specific dates because we will confine our analysis to month and season.  Additionally, actual temperature and felt ("apparent") temperature are highly correlated (see plot correlation coefficient = 0.99) so I eliminated the latter.
+
+```{r echo=FALSE}
+qplot(x = day$temp, y = day$felt_temp, xlab = 'Temperature', ylab = 'Apparent Temperature', main="Temperature vs. Apparent Temperature", colour = I('dark blue'))
+```
+
+Next I looked at the relationships between "conditions" and the individual weather measurements.  I used Spearman's rank correlation tests because "conditions" is an ordinal variable, not continuous.  The correlation between condition and both temperature and windspeed were non-significant (not shown).  However, there was a significant relationship between humidity and condition, with a Spearman's rho of 0.597 at the p < 2.2e-16 significance level (see below).  This indicates that humidity is a pretty good substitute for "condition".  
+
+Notice the one extreme outlier.  It shows zero hunidity on a day where the weather condition is "light rain or snow".  Without this datum, the correlation would undoubtedly be higher, reinforcing the previous conclusion.  [Additional testing of the power of "condition" for predicting numbers of bike riders also showed it having no better power than humidity, confirming the appropriateness of removing "condition".]
+
+```{r echo=FALSE}
+qplot(x = day$conditions, y = day$hum, xlab = 'Weather Condition', ylab = 'Humidity', main="Humidity vs. Weather Conditions", colour = I('dark blue')) + scale_fill_manual(labels = c("1 = Mostly Sunny", "2 = Mostly Cloudy", "3 = Light Rain or Snow"), values = c("blue", "blue", "blue")) + theme(legend.title=element_blank(), legend.position="top", legend.key = element_rect(colour = NA))
+cor.test(day$conditions, day$hum, method ='spearman')
+```
+
+
+Finally, I also looked at possible relationships among other weather variables and these, in fact, show various levels of correlation, generally with significance levels well below 0.01.  However, in each case the R-squared values are below 0.25 indicating that the relationship has low explanitory power. Consequently, none of the remaining variables were eliminated.
+
+Having reduced the number of variables by four, we can take a look at the summary of the non-categorical variables(below).  The analyses to follow are based on this reduced set of variables.
+```{r echo=FALSE}
+day <- read.csv('day.csv')
+rentals1 <- day[,c(10, 12:16)]
+summary(rentals1)
+pairs(rentals1)
+```
+
+```{r echo=FALSE}
+day <- read.csv('day.csv')
+rentals <- day[,c(3:8, 10, 12:16)]
+```
+
+###Univariate Models
+####Weather Variables on Number of Casual or Registered Riders
+
+
+###Multivariate Models
+
+```{r }
+
+
+```
+
+###The Preferred Predictive Model
+
+
+###What Next?
+
+
+### About the Author
+
+<br>
+<div style="width:840px; height:210px">
+<div style="float:left; width:200px; height=200px; padding-right:20px;">
+  ![](Yours_Truly.JPG)
+</div>
+
+<div style="float:left; margin-top:25px; width:400px; height:105px;">
+  <h5>[Sam Skinner](https://www.linkedin.com/in/samskinnerphd) is a rambling rube in R-land, hoping to hitch a ride with fellow travelers through the R-landscape.</h5>
+</div>
+
+<div style="float:right; width:200px; height=180px; padding-left:10px;">
+  ![](white_shaman.jpg)
+</div>
+</div>
+<footer>&copy; Sam Skinner, 2016. </footer>
+<br><br>

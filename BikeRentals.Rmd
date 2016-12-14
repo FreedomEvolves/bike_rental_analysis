@@ -1,0 +1,320 @@
+---
+title: "Bike Rentals"
+author: "SWS"
+date: "10/29/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE}
+library(ggplot2) 
+library(stats)
+library(corrplot)
+library(reshape2)
+```
+
+
+### Executive Summary
+
+Bike Rentals are a growing industry but one that faces both weather-based and seasonal variations in demand.  It is important to quantify how those those variations affect demand as demand, in turn, affects the number of employees needed as well as the number of bikes that need to be available.  Significant mis-matches in bike availability or numbers of workers can result in missing rental opportunities (no bike available or insufficient employees for timely rental) or conversely, extra expenses to the rental company in terms of wages or bike purchases.
+
+Using a publicly available dataset (described below), I attempt to answer two basic questions:
+
+  Q1: What are the factors that determine demand?
+  
+  Q2: Do these factors vary by season?
+  
+The dataset consists of 17379 rental records collected over a two year period (2011, 2012).  The records have been aggregated into 731 days for this analysis because each day is the determinant of the number bikes and employees needed.
+
+Data attributes are both categorical and numerical and the statistical analyses vary accordingly.
+
+  
+##### The Data Source
+The data are taken from the [UCI Machine Learning Repository](url: http://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset).  The original data are reported and analyized in a paper by [Fanaee, T and Gama, J.](url: http://link.springer.com/article/10.1007%2Fs13748-013-0040-3)
+
+### Data Description
+```{r echo=FALSE}
+day <- read.csv('day.csv')
+dim(day)
+```
+
+As noted previously, the data consist of 731 day records with 15 variables per record (the 16th is a record number). Here is a list of the data attributes, including the variable name the type of data and a sample of the first 10 records for that attribute:
+
+```{r }
+day <- read.csv('day.csv')
+str(day)
+```
+
+
+##### Description of Attributes
+
+1. Instances:    Record id number
+2.  date:       Date (Factor w/ 731 levels "1/1/11","1/1/12",...)
+3.  season:      Season (1:spring, 2:summer, 3:fall, 4:winter)
+4.  yr:          Year (0:2011, 1:2012)
+5.  month:       Month (1 to 12)
+6.  holiday:     Holiday? (0:no, 1:yes)
+7.  weekday:     Day of Week.  Numbered 1-7, beginning with Sunday.
+8.  workingday:  WorkingDay? (0:no, 1:yes)
+9.  conditions:  Weather Conditions: (1: Clear or Partly cloudy,
+                                      2: Mist with Few Clouds up to Cloudy,
+                                      3: Light Snow or Light Rain with Scattered Clouds/Cloudy/Thunderstorm,
+                                      4: Heavy Rain, Hail or Thunderstorm or Mist or Snow + Fog)
+10. temp:       Normalized temperature in Celsius. The values are divided to 41 (max)
+11. felt_temp:  Normalized feeling temperature in Celsius. The values are divided to 50 (max)
+12. hum:        Normalized humidity.  The values are divided to 100 (max)
+13. windspeed:  Normalized wind speed. The values are divided to 67 (max)
+14. casual:     Count of casual users
+15. registered: Count of registered users
+16. count:      Count of total bike rentals including both casual and registered
+
+```{r }
+day <- read.csv('day.csv')
+summary(day)
+```
+
+### Loading Data
+```{r }
+hist(day$conditions)
+```
+
+Notice that there are no "4" values and very few "3" values (n= 21).  We generally have sunny or partially cloudy days.
+
+```{r }
+hist(day$temp)
+hist(day$felt_temp)
+hist(day$hum)
+hist(day$windspeed)
+hist(day$casual)
+hist(day$registered)
+hist(day$count)
+```
+
+```{r }
+
+```
+
+#### Visual Data Exploration
+
+```{r }
+plot(day$conditions, day$casual)
+plot(day$conditions, day$registered)
+plot(day$hum, day$casual)
+plot(day$hum, day$registered)
+plot(day$windspeed, day$casual)
+plot(day$windspeed, day$registered)
+plot(day$temp, day$casual)
+plot(day$temp, day$registered)
+plot(day$felt_temp, day$casual)
+plot(day$felt_temp, day$registered)
+plot(day$temp, day$felt_temp)
+cor(day$temp, day$felt_temp)
+plot(day$temp, day$hum)
+cor.test(day$temp, day$hum)
+plot(day$temp, day$windspeed)
+cor.test(day$temp, day$windspeed)
+plot(day$hum, day$windspeed)
+cor.test(day$hum, day$windspeed)
+
+plot(day$conditions, day$windspeed)
+cor.test(day$conditions, day$windspeed)
+cor.test(day$conditions, day$windspeed, method='spearman')
+plot(day$conditions, day$hum)
+cor.test(day$conditions, day$hum, method ='spearman')
+plot(day$conditions, day$temp)
+cor.test(day$conditions, day$temp)
+
+```
+
+### Correlations and Linear Regressions (single variables)
+
+NUMBER OF USERS vs. CONDITIONS
+```{r }
+cor.test(day$conditions, day$casual)
+cor.test(day$conditions, day$registered)
+casual_users = lm(day$casual ~ day$conditions)
+casual_users
+reg_users = lm(day$registered ~ day$conditions)
+reg_users
+```
+
+NUMBER OF USERS vs. HUMIDITY
+```{r }
+cor.test(day$hum, day$casual)
+cor.test(day$hum, day$registered)
+casual_users = lm(day$casual ~ day$hum)
+casual_users
+reg_users = lm(day$registered ~ day$hum)
+reg_users
+```
+
+NUMBER OF USERS vs. WINDSPEED
+```{r }
+cor.test(day$windspeed, day$casual)
+cor.test(day$windspeed, day$registered)
+casual_users = lm(day$casual ~ day$windspeed)
+casual_users
+reg_users = lm(day$registered ~ day$windspeed)
+reg_users
+```
+
+NUMBER OF USERS vs. ACTUAL TEMPERATURE
+```{r }
+cor.test(day$temp, day$casual)
+cor.test(day$temp, day$registered)
+casual_users = lm(day$casual ~ day$temp)
+casual_users
+reg_users = lm(day$registered ~ day$temp)
+reg_users
+```
+
+NUMBER OF USERS vs. FELT TEMPERATURE
+```{r }
+cor.test(day$felt_temp, day$casual)
+cor.test(day$felt_temp, day$registered)
+casual_users = lm(day$casual ~ day$felt_temp)
+casual_users
+reg_users = lm(day$registered ~ day$felt_temp)
+reg_users
+```
+
+### Multivariate Exploration
+Since all weather variables show significant effects on the number of riders, lets model the full set.  However, because the actual temperature and the felt_temperature are virtually the same, we will use only actual temperatures.
+
+Conditions only vs. Weather data -casual users
+```{r }
+casual_users = lm(day$casual ~ day$conditions)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+casual_users = lm(day$casual ~ day$temp + day$hum +day$windspeed)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+```
+
+Conditions only vs. Weather data -registered users
+```{r }
+reg_users = lm(day$registered ~ day$conditions)
+reg_users
+summary(reg_users)
+anova(reg_users)
+plot(reg_users)
+reg_users = lm(day$registered ~ day$temp + day$hum +day$windspeed)
+reg_users
+summary(reg_users)
+anova(reg_users)
+plot(reg_users)
+```
+
+
+####<b>How well do weather measurements predict "conditions"?</b>
+```{r }
+conditions = lm(day$conditions ~ day$temp + day$hum + day$windspeed)
+conditions
+summary(conditions)
+anova(conditions)
+plot(conditions)
+```
+
+###Including Seasonality
+```{r }
+casual_users = lm(day$casual ~ day$season)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+```
+
+####Season and Weather
+
+```{r }
+casual_users = lm(day$casual ~ day$season + day$temp +day$hum +day$windspeed)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+```
+
+####Month and Weather
+
+```{r }
+casual_users = lm(day$casual ~ day$month + day$temp +day$hum +day$windspeed)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+```
+
+#### Days and Weather
+```{r }
+plot(day$weekday, day$casual)
+
+plot(day$weekday, day$registered)
+
+```
+```{r }
+casual_users = lm(day$casual ~ day$workingday + day$weekday + day$holiday + day$temp +day$hum +day$windspeed)
+casual_users
+summary(casual_users)
+anova(casual_users)
+plot(casual_users)
+```
+
+```{r }
+reg_users = lm(day$registered ~ day$workingday + day$weekday + day$holiday + day$temp +day$hum +day$windspeed)
+reg_users
+summary(reg_users)
+anova(reg_users)
+plot(reg_users)
+```
+
+
+##Current Final Model
+
+
+```{r }
+casual_users = lm(day$casual ~ day$workingday + day$temp +day$hum +day$windspeed)
+casual_users
+summary(casual_users)
+anova(casual_users)
+par(mfrow=c(2,2))
+plot(casual_users)
+```
+
+```{r }
+reg_users = lm(day$registered ~ day$workingday + day$temp +day$hum +day$windspeed)
+reg_users
+summary(reg_users)
+anova(reg_users)
+par(mfrow=c(2,2))
+plot(reg_users)
+```
+
+
+```{r }
+par(mar = c(2, 2, 2, 2))
+par(mfrow = c(1, 1))
+R <- 3
+r <- 2
+x <- seq(0, 2*pi,length.out=50)
+y <- seq(0, pi,length.out=50)
+M <- mesh(x, y)
+ 
+alpha <- M$x
+beta <- M$y
+ 
+ 
+surf3D(x = (R + r*cos(alpha)) * cos(beta),
+       y = (R + r*cos(alpha)) * sin(beta),
+       z = r * sin(alpha),
+       colkey=FALSE,
+       bty="b2",
+       main="Half of a Torus")
+```
+
